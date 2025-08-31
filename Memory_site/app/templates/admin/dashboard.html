@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <h1>Upload Files</h1>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+    </header>
+
+   <main class="dashboard-main">
+    <div class="panel upload-section">
+        <h2>1. Upload Files</h2>
+        <p>Drag & drop your PDF and image files below.</p>
+        <form id="upload-form" class="upload-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin.upload_file') }}">
+            <div class="drop-zone">
+                <span class="drop-zone-prompt">Drop files here</span>
+                <input type="file" name="files" id="file-input" multiple>
+            </div>
+        </form>
+        <div id="file-preview-container"></div>
+        <button id="submit-btn" class="submit-btn" style="display: none;">Upload & Process</button>
+    </div>
+
+    <!-- Find this panel -->
+<div class="panel summary-section">
+    <h2>2. Summarized Content</h2>
+    
+    <!-- REPLACE the content-box div with this logic -->
+    <div class="content-box" id="summary-content">
+        {% if summary %}
+            <p>{{ summary }}</p>
+        {% else %}
+            <p>Your summarized text will appear here after a PDF is processed...</p>
+        {% endif %}
+    </div>
+</div>
+
+    <div class="panel viewer-section">
+        <h2>3. Generated 3D Model</h2>
+        <div class="content-box viewer-box">
+            <model-viewer id="model-viewer" 
+                          src="" alt="Generated 3D model" 
+                          ar 
+                          camera-controls 
+                          auto-rotate
+                          poster="{{ url_for('static', filename='images/placeholder.png') }}">
+            </model-viewer>
+        </div>
+    </div>
+</main>
+</div>
+{% endblock %}
