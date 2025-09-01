@@ -36,19 +36,23 @@
         {% endif %}
     </div>
 </div>
+<div class="panel viewer-section">
+    <h2>3. Generated 3D Model</h2>
+    <div class="content-box viewer-box">
+        
+        <!-- REPLACE the old model-viewer tag with this one -->
+        <model-viewer id="model-viewer" 
+                      src="{{ url_for('static', filename=glb_path) if glb_path else '' }}"
+                      alt="Generated 3D model" 
+                      ar 
+                      camera-controls 
+                      auto-rotate
+                      poster="{{ url_for('static', filename='images/placeholder.png') }}">
+        </model-viewer>
 
-    <div class="panel viewer-section">
-        <h2>3. Generated 3D Model</h2>
-        <div class="content-box viewer-box">
-            <model-viewer id="model-viewer" 
-                          src="" alt="Generated 3D model" 
-                          ar 
-                          camera-controls 
-                          auto-rotate
-                          poster="{{ url_for('static', filename='images/placeholder.png') }}">
-            </model-viewer>
-        </div>
     </div>
+</div>
+    
 </main>
 </div>
 {% endblock %}

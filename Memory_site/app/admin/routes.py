@@ -2,7 +2,10 @@ import os
 import fitz  # PyMuPDF
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from flask_login import login_required, current_user
+
+# Import both of your services
 from app.services.ai_summarizer import summarize_text_with_bart
+from app.services.model_generator import create_text_texture, generate_3d_card
 
 # Blueprint setup remains the same
 admin_bp = Blueprint('admin', __name__,
@@ -16,11 +19,13 @@ def dashboard():
         flash("You are not authorized to view this page.")
         return redirect(url_for('auth.login'))
     
-    # Retrieve the summary from the session if it exists, then remove it
+    # Retrieve both the summary and the model path from the session
     summary = session.pop('summary', None)
+    glb_path = session.pop('glb_path', None)
     
-    # Pass the summary to the template
-    return render_template('dashboard.html', summary=summary)
+    # Pass both variables to the template
+    return render_template('dashboard.html', summary=summary, glb_path=glb_path)
+
 
 @admin_bp.route('/upload', methods=['POST'])
 @login_required
@@ -33,48 +38,76 @@ def upload_file():
         flash('No files selected!')
         return redirect(url_for('admin.dashboard'))
 
-    summary_generated = False
-    
-    # We will process the first valid PDF found
+    print("\n--- STARTING NEW FILE UPLOAD PROCESS ---")
+
     for file in uploaded_files:
         if file and file.filename.lower().endswith('.pdf'):
             try:
-                # Ensure the temp directory exists
-                if not os.path.exists('temp'):
-                    os.makedirs('temp')
+                # --- SETUP DIRECTORIES ---
+                temp_dir = 'temp'
+                models_dir = os.path.join('app', 'static', 'models')
+                if not os.path.exists(temp_dir):
+                    os.makedirs(temp_dir)
+                if not os.path.exists(models_dir):
+                    os.makedirs(models_dir)
 
-                # Create a secure temporary path for the file
-                temp_path = os.path.join('temp', file.filename)
-                file.save(temp_path)
+                # --- PDF PROCESSING ---
+                print(f"[1] Processing PDF: {file.filename}")
+                temp_pdf_path = os.path.join(temp_dir, file.filename)
+                file.save(temp_pdf_path)
 
-                # 1. Extract text from the PDF
-                doc = fitz.open(temp_path)
+                doc = fitz.open(temp_pdf_path)
                 full_text = "".join(page.get_text() for page in doc)
                 doc.close()
-
-                # 2. Call the summarizer if text was found
-                if full_text.strip():
-                    print(f"Summarizing text from {file.filename} with BART model...")
-                    summary = summarize_text_with_bart(full_text)
-                    
-                    # Store the summary in the session to pass to the dashboard
-                    session['summary'] = summary
-                    summary_generated = True
+                os.remove(temp_pdf_path) # We can still clean up the PDF
                 
-                # Clean up the temporary file
-                os.remove(temp_path)
+                print(f"[2] Extracted {len(full_text)} characters from PDF.")
+                if not full_text.strip():
+                    print("[ERROR] PDF text is empty. Aborting.")
+                    flash("Could not extract any text from the PDF.")
+                    return redirect(url_for('admin.dashboard'))
 
-                # We've processed the first PDF, so we break the loop
-                break
+                # --- AI SUMMARIZATION ---
+                print("[3] Summarizing text with AI model...")
+                summary = summarize_text_with_bart(full_text)
+                session['summary'] = summary
+                print(f"[4] Generated Summary: '{summary[:100]}...'") # Print first 100 chars
 
-            except Exception as e:
-                flash(f"An error occurred while processing {file.filename}: {e}")
-                print(f"Error processing file {file.filename}: {e}")
+                # --- 3D MODEL GENERATION ---
+                texture_path = os.path.join(temp_dir, 'summary_texture.png')
+                file_basename = os.path.splitext(file.filename)[0]
+                glb_filename = f"{file_basename}.glb"
+                glb_save_path = os.path.join(models_dir, glb_filename)
+
+                print(f"[5] Calling 'create_text_texture' to save to: {texture_path}")
+                create_text_texture(summary, texture_path)
+                
+                # Check if the texture was actually created
+                if not os.path.exists(texture_path):
+                    print("[FATAL ERROR] 'create_text_texture' did NOT create the image file.")
+                    flash("Error: Texture image could not be created.")
+                    return redirect(url_for('admin.dashboard'))
+                
+                print(f"[6] Texture file created successfully. Calling 'generate_3d_card' to save to: {glb_save_path}")
+                generate_3d_card(texture_path, glb_save_path)
+                
+                session['glb_path'] = f'models/{glb_filename}'
+
+                # --- CLEANUP (Temporarily Disabled for Debugging) ---
+                # We are commenting this out so the texture file REMAINS for us to inspect.
+                # if os.path.exists(texture_path):
+                #     os.remove(texture_path)
+                print("[7] Process complete. SKIPPING texture cleanup for debugging.")
+
+                flash('PDF processed and 3D model generated successfully!')
                 return redirect(url_for('admin.dashboard'))
 
-    if summary_generated:
-        flash('PDF processed and summarized successfully!')
-    else:
-        flash('No PDF files were found in your upload to summarize.')
+            except Exception as e:
+                print(f"[FATAL EXCEPTION] An error occurred: {e}")
+                import traceback
+                traceback.print_exc() # Print the full error stack trace
+                flash(f"An error occurred: {e}")
+                return redirect(url_for('admin.dashboard'))
 
+    flash('No valid PDF files were found in your upload.')
     return redirect(url_for('admin.dashboard'))
