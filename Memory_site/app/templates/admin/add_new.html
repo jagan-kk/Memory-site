@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Colleges{% endblock %}
+
+{% block content %}
+<style>
+    /* Styles for the management page */
+    .manage-container {
+        padding: 20px;
+    }
+    .manage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 1px solid var(--bg-light);
+        padding-bottom: 20px;
+    }
+    .manage-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: var(--text-primary);
+    }
+    .manage-table th, .manage-table td {
+        border: 1px solid var(--bg-light);
+        padding: 12px 15px;
+        text-align: left;
+    }
+    .manage-table th {
+        background-color: var(--bg-medium);
+        font-weight: 500;
+    }
+    .manage-table td.actions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px; /* This creates clean space between the buttons */
+    }
+    .btn-edit, .btn-delete {
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+    .btn-edit {
+        background-color: var(--accent-blue);
+        color: white;
+    }
+    .btn-edit:hover {
+        background-color: var(--accent-blue-hover);
+    }
+    .btn-delete {
+        background-color: var(--accent-red);
+        color: white;
+    }
+    .btn-delete:hover {
+        background: #c82333;
+    }
+
+    /* --- MODAL STYLES --- */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6); /* Dimmed background */
+    }
+    .modal-content {
+        background-color: var(--bg-medium);
+        margin: 15% auto;
+        padding: 30px;
+        border: 1px solid var(--bg-light);
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        box-shadow: 0 5px 25px var(--shadow-dark);
+        position: relative;
+    }
+    .close-button {
+        color: var(--text-secondary);
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .close-button:hover,
+    .close-button:focus {
+        color: var(--text-primary);
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<div class="generator-container manage-container">
+    <div class="manage-header">
+        <h1>Manage College Data</h1>
+    </div>
+
+    <table class="manage-table">
+        <thead>
+            <tr>
+                <th>College Name</th>
+                <th>Coordinates</th>
+                <th style="width: 15%;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for college in colleges %}
+            <tr>
+                <td>{{ college.college_name }}</td>
+                <td>{{ college.coordinate }}</td>
+                <td class="actions">
+                    <a href="#" class="btn-edit modal-trigger" 
+                        data-id="{{ college._id }}" 
+                        data-name="{{ college.college_name }}" 
+                        data-coordinate="{{ college.coordinate }}">Edit</a>
+                    
+                    <a href="{{ url_for('admin.delete_college', college_id=college._id) }}" class="btn-delete">Delete</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align: center;">No colleges found in the database.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <header class="generator-header" style="margin-bottom: 20px;">
+            <h1>Edit College Data</h1>
+        </header>
+        <form id="editForm" class="generator-form" method="POST">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label for="edit-college-name">College Name</label>
+                <input type="text" id="edit-college-name" name="college_name">
+            </div>
+            <div class="form-group">
+                <label for="edit-coordinate">Coordinates</label>
+                <input type="text" id="edit-coordinate" name="coordinate">
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button type="submit" class="submit-btn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Get the modal and its elements
+    const modal = document.getElementById('editModal');
+    const closeBtn = document.querySelector('.close-button');
+    const editForm = document.getElementById('editForm');
+    const editCollegeName = document.getElementById('edit-college-name');
+    const editCoordinate = document.getElementById('edit-coordinate');
+    const editButtons = document.querySelectorAll('.modal-trigger');
+
+    // When a user clicks an "Edit" button, open the modal
+    editButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault(); // Stop the link from navigating
+
+            // Get the data from the button's data-* attributes
+            const collegeId = this.dataset.id;
+            const collegeName = this.dataset.name;
+            const coordinate = this.dataset.coordinate;
+
+            // Set the form's action to the correct URL for this specific college
+            editForm.action = `/admin/edit/${collegeId}`;
+
+            // Populate the form fields with the data
+            editCollegeName.value = collegeName;
+            editCoordinate.value = coordinate;
+
+            // Show the modal
+            modal.style.display = 'block';
+        });
+    });
+
+    // When the user clicks on <span> (x), close the modal
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+</script>
+
+{% endblock %}

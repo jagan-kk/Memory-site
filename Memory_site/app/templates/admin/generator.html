@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Admin generator{% endblock %}
+
+{% block content %}
+<div class="generator-container">
+    <header class="generator-header">
+        <form class="generator-form" method="POST">
+            <div class="form-row">
+
+               <div class="form-group">
+        <label for="college-name">College Name</label>
+    <select id="college-name" name="college_name">
+        <option value="" disabled selected>Select a college</option>
+        {% for name in college_data.keys()|sort %}
+            <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+                <div class="form-group">
+                    <label for="semester">Semester</label>
+                    <select id="semester" name="semester">
+                        <option value="s1">S1</option>
+                        <option value="s2">S2</option>
+                        <option value="s3">S3</option>
+                        <option value="s4">S4</option>
+                        <option value="s5">S5</option>
+                        <option value="s6">S6</option>
+                        <option value="s7">S7</option>
+                        <option value="s8">S8</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="branch">Branch</label>
+                    <select id="branch" name="branch">
+                        <option value="cse">Computer Science</option>
+                        <option value="mec">Mechanics</option>
+                        <option value="ds">Data Science</option>
+                        <option value="ece">Electronics</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="coordinate">Coordinates</label>
+                    <input type="text" id="coordinate" name="coordinate" placeholder="Select a college to see coordinates" readonly>
+                </div>
+
+            </div>
+        </form>
+    </header>
+
+    <main class="generator-main">
+        <div class="panel upload-section">
+            <h2>1. Upload PDF</h2>
+            <form id="upload-form" class="upload-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin.upload_file') }}">
+                <div class="drop-zone">
+                    <span class="drop-zone-prompt">Drop files here</span>
+                    <input type="file" name="files" id="file-input" multiple>
+                </div>
+            </form>
+            <div id="file-preview-container"></div>
+            <button id="submit-btn" class="submit-btn" style="display: none;">Upload & Process</button>
+        </div>
+
+        <div class="panel summary-section">
+            <h2>2. Summarized Content</h2>
+            <div class="content-box" id="summary-content">
+                {% if summary %}
+                    <p>{{ summary }}</p>
+                {% else %}
+                    <p>Your summarized text will appear here after a PDF is processed...</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="panel viewer-section">
+            <h2>3. Generated 3D Model</h2>
+            <div class="content-box viewer-box">
+                <model-viewer id="model-viewer"
+                                src="{{ url_for('static', filename=glb_path) if glb_path else '' }}"
+                                alt="Generated 3D model"
+                                ar
+                                camera-controls
+                                auto-rotate
+                                poster="{{ url_for('static', filename='images/placeholder.png') }}">
+                </model-viewer>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const collegeData = {{ college_data | tojson }};
+    const collegeInput = document.getElementById('college-name');
+    const coordinateInput = document.getElementById('coordinate');
+
+    // Use 'change' for <select> dropdowns instead of 'input'
+    collegeInput.addEventListener('change', function() {
+        const selectedCollege = collegeInput.value;
+        if (collegeData[selectedCollege]) {
+            coordinateInput.value = collegeData[selectedCollege];
+        } else {
+            coordinateInput.value = '';
+        }
+    });
+</script>
+
+{% endblock %}

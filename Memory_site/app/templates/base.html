@@ -4,22 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AR Project{% endblock %}</title>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
-    {% if 'dashboard' in request.endpoint %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    {% if request.endpoint.startswith('admin.') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/generator.css') }}">
     {% endif %}
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 </head>
 <body>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+    <div class="site-wrapper">
+        
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <aside class="sidebar">
+            <h3 class="sidebar-title">Memory_site</h3>
+            <nav class="sidebar-nav">
+                <ul>
+                    <ul>
+    <li><a href="#">Home</a></li>
+    <li><a href="{{ url_for('admin.add_new') }}" class="{{ 'active' if 'add_new' in request.endpoint else '' }}">Add New</a></li>
+    <li><a href="{{ url_for('admin.generator') }}" class="{{ 'active' if 'generator' in request.endpoint else '' }}">Generator</a></li>
+    <li><a href="#">Materials</a></li>
+    <li><a href="#">Models</a></li>
 
-    <!-- ADD THIS: Conditionally link dashboard script -->
-    {% if 'dashboard' in request.endpoint %}
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</ul>
+                </ul>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </nav>
+        </aside>
+        {% endif %}
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% if 'generator' in request.endpoint %}
+    <script src="{{ url_for('static', filename='js/generator.js') }}"></script>
     {% endif %}
 </body>
 </html>
