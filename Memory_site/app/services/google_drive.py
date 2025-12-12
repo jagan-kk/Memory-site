@@ -5,6 +5,40 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
+# ... (keep existing imports and code)
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from io import BytesIO  # <--- Add this import at the top if missing
+
+def get_drive_service():
+    """Helper to get the authenticated service."""
+    creds = get_oauth_credentials()
+    return build('drive', 'v3', credentials=creds)
+
+def stream_file(file_id):
+    """
+    Downloads a file into memory to stream it to the user.
+    """
+    try:
+        service = get_drive_service()
+        request = service.files().get_media(fileId=file_id)
+        
+        file_stream = BytesIO()
+        downloader = MediaIoBaseDownload(file_stream, request)
+        
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+            
+        file_stream.seek(0)
+        return file_stream
+    except Exception as e:
+        print(f"Error streaming file: {e}")
+        return None
+
+
+
+
+
 
 # --- GOOGLE DRIVE CONFIGURATION ---
 CLIENT_SECRET_FILE = 'credentials.json'        # OAuth client secret file

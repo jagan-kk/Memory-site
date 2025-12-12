@@ -25,9 +25,9 @@
     <li><a href="#">Home</a></li>
     <li><a href="{{ url_for('admin.add_new') }}" class="{{ 'active' if 'add_new' in request.endpoint else '' }}">Add New</a></li>
     <li><a href="{{ url_for('admin.generator') }}" class="{{ 'active' if 'generator' in request.endpoint else '' }}">Generator</a></li>
-    <li><a href="#">Materials</a></li>
-    <li><a href="#">Models</a></li>
-
+    
+    <li><a href="{{ url_for('admin.materials') }}" class="{{ 'active' if 'materials' in request.endpoint else '' }}">Materials</a></li>
+    <li><a href="{{ url_for('admin.models') }}" class="{{ 'active' if 'models' in request.endpoint else '' }}">Models</a></li>
 </ul>
                 </ul>
                 <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>

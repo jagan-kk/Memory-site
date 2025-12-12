@@ -1,4 +1,5 @@
 import os
+import re
 import fitz  # PyMuPDF
 from bson.objectid import ObjectId
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
@@ -9,6 +10,15 @@ from app.services.ai_summarizer import summarize_text_with_bart
 from app.services.model_generator import create_text_texture, generate_3d_card
 # Import the Google Drive service
 from app.services.google_drive import upload_to_drive
+
+
+from flask import send_file
+# Ensure you import the new function
+from app.services.google_drive import stream_file
+
+
+
+
 
 
 # Blueprint setup remains the same
@@ -131,6 +141,130 @@ def generator():
                            summary=summary,
                            glb_path=glb_path,
                            college_data=college_data)
+
+@admin_bp.route('/materials')
+@login_required
+def materials():
+    try:
+        # 1. Fetch Colleges
+        colleges = list(mongo.db.colleges.find({}, {'college_name': 1, 'coordinate': 1}))
+        
+        # Helper: Clean coordinates for matching (removes spaces)
+        def clean_coord(c): return str(c).replace(" ", "").strip().lower() if c else ""
+
+        # Map Coordinates -> College Name
+        coord_to_college = {}
+        for c in colleges:
+            if c.get('coordinate'):
+                coord_to_college[clean_coord(c.get('coordinate'))] = c.get('college_name')
+        
+        # Get unique college names for the dropdown
+        college_names = sorted(list(set(c['college_name'] for c in colleges if 'college_name' in c)))
+
+        # 2. Fetch Assets
+        assets = mongo.db.assets.find({}, {
+            'filename': 1, 
+            'pdf_url': 1,
+            'semester': 1, 
+            'coordinate': 1
+        })
+
+        # 3. Group by Semester
+        materials_by_sem = {str(i): [] for i in range(1, 9)}
+        materials_by_sem['Other'] = []
+
+        for asset in assets:
+            # A. Match College
+            raw_coord = asset.get('coordinate')
+            cleaned_coord = clean_coord(raw_coord)
+            asset['college_name'] = coord_to_college.get(cleaned_coord, 'Unknown')
+
+            # B. Smart Semester Parsing (The Fix for "s8")
+            raw_sem = str(asset.get('semester', ''))
+            
+            # This regex looks for ANY number inside the text.
+            # It turns "s8" -> 8, "Sem 4" -> 4, "Semester 1" -> 1
+            match = re.search(r'(\d+)', raw_sem)
+            
+            target_bucket = 'Other'
+            
+            if match:
+                sem_num = int(match.group(1))
+                # Check if the number is valid (1-8)
+                if 1 <= sem_num <= 8:
+                    target_bucket = str(sem_num)
+            
+            # Add to the correct bucket
+            materials_by_sem[target_bucket].append(asset)
+
+    except Exception as e:
+        print(f"Error fetching materials: {e}")
+        materials_by_sem = {str(i): [] for i in range(1, 9)}
+        materials_by_sem['Other'] = []
+        college_names = []
+        
+    return render_template('admin/materials.html', 
+                           materials_by_sem=materials_by_sem, 
+                           colleges=college_names)
+
+
+@admin_bp.route('/models')
+@login_required
+def models():
+    try:
+        # 1. Fetch Colleges
+        colleges = list(mongo.db.colleges.find({}, {'college_name': 1, 'coordinate': 1}))
+        
+        # Helper: Clean coordinates
+        def clean_coord(c): return str(c).replace(" ", "").strip().lower() if c else ""
+
+        # Map Coordinates -> College Name
+        coord_to_college = {}
+        for c in colleges:
+            if c.get('coordinate'):
+                coord_to_college[clean_coord(c.get('coordinate'))] = c.get('college_name')
+        
+        college_names = sorted(list(set(c['college_name'] for c in colleges if 'college_name' in c)))
+
+        # 2. Fetch Assets (Specifically GLB fields)
+        assets = mongo.db.assets.find({}, {
+            'filename': 1, 
+            'glb_url': 1,
+            'glb_id': 1,    # Important for <model-viewer>
+            'semester': 1, 
+            'coordinate': 1
+        })
+
+        # 3. Group by Semester
+        models_by_sem = {str(i): [] for i in range(1, 9)}
+        models_by_sem['Other'] = []
+
+        for asset in assets:
+            # A. Match College
+            raw_coord = asset.get('coordinate')
+            asset['college_name'] = coord_to_college.get(clean_coord(raw_coord), 'Unknown')
+
+            # B. Smart Semester Parsing
+            raw_sem = str(asset.get('semester', ''))
+            match = re.search(r'(\d+)', raw_sem)
+            
+            target_bucket = 'Other'
+            if match:
+                sem_num = int(match.group(1))
+                if 1 <= sem_num <= 8:
+                    target_bucket = str(sem_num)
+            
+            models_by_sem[target_bucket].append(asset)
+
+    except Exception as e:
+        print(f"Error fetching models: {e}")
+        models_by_sem = {str(i): [] for i in range(1, 9)}
+        models_by_sem['Other'] = []
+        college_names = []
+        
+    return render_template('admin/models.html', 
+                           models_by_sem=models_by_sem, 
+                           colleges=college_names)
 
 @admin_bp.route('/upload', methods=['POST'])
 @login_required
@@ -268,3 +402,26 @@ def upload_file():
     
     flash('No valid PDF files were found in your upload.')
     return redirect(url_for('admin.generator'))
+
+
+@admin_bp.route('/serve_model/<file_id>')
+def serve_model(file_id):
+    """
+    Proxy route: Fetches file from Drive and serves it to the browser
+    so <model-viewer> doesn't face CORS/Auth issues.
+    """
+    try:
+        file_stream = stream_file(file_id)
+        
+        if file_stream:
+            return send_file(
+                file_stream,
+                mimetype='model/gltf-binary',
+                as_attachment=False,
+                download_name=f"{file_id}.glb"
+            )
+        else:
+            return "File not found or Drive Error", 404
+    except Exception as e:
+        print(f"Proxy Error: {e}")
+        return f"Error: {e}", 500

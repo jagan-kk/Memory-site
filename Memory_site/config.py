@@ -9,5 +9,3 @@ class Config:
     MONGO_URI = os.environ.get('MONGO_URI') or \
         'mongodb+srv://jagankk:Jagankkstm23@cluster0.kqm7txf.mongodb.net/arProjectDB?retryWrites=true&w=majority&appName=Cluster0'
     
-    GOOGLE_DRIVE_FOLDER_ID = "https://drive.google.com/drive/u/0/folders/1I8JIzIf1ShwFl1OF_MsG4j37wyz06YwF"
-    SERVICE_ACCOUNT_FILE = "app/services/google_drive_key.json"
