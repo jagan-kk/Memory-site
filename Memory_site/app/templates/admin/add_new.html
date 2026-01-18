@@ -5,13 +5,11 @@
 {% block content %}
 <style>
     :root {
-        /* Set the main dark color here (black/dark gray) */
         --dark-background: #333; 
         --primary-color: #3f51b5; 
         --accent-green: #28a745; 
     }
 
-    /* Styles for the new "Add New" button */
     .btn-add-new {
         text-decoration: none;
         padding: 10px 15px;
@@ -28,79 +26,43 @@
         background-color: #218838;
     }
 
-    /* Styles for the college list table */
     .manage-table {
         width: 100%;
         border-collapse: separate; 
-        border-spacing: 0 8px; /* Add vertical spacing between rows */
+        border-spacing: 0 8px;
         margin-top: 20px;
     }
 
-    /* FIX: ALL Header (th) Styling - Set to dark background with white text */
     .manage-table th {
-        background-color: var(--dark-background); /* Dark Background */
-        color: white; /* White text color */
+        background-color: var(--dark-background);
+        color: white;
         font-weight: 700;
         padding: 12px 15px;
         text-align: left;
-        border: 1px solid var(--dark-background); /* Border matches background */
+        border: 1px solid var(--dark-background);
         border-radius: 4px; 
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
     }
 
-    /* Adjust specific header properties */
-    .manage-table th:last-child {
-        text-align: right;
-    }
-    .manage-table th:nth-child(1) {
-        border-top-left-radius: 4px;
-        border-bottom-left-radius: 4px;
-    }
-    .manage-table th:nth-child(3) {
-        border-top-right-radius: 4px;
-        border-bottom-right-radius: 4px;
-    }
-    
-    /* Base data cell styling */
     .manage-table td {
         padding: 12px 15px;
         line-height: 1.5;
         vertical-align: middle;
-        border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    /* FIX: Data Cell 1 (College Name), 2 (Coordinate), and 3 (Actions) -> DARK Background */
-    .manage-table td:nth-child(1), 
-    .manage-table td:nth-child(2),
-    .manage-table td:nth-child(3) 
-    {
         background-color: var(--dark-background); 
         color: white; 
         border: 1px solid var(--dark-background);
-        box-shadow: none; 
+        border-radius: 4px;
     }
 
-    /* Data cell rounding for the first and last visible columns */
-    .manage-table td:nth-child(1) {
-        border-top-left-radius: 4px;
-        border-bottom-left-radius: 4px;
-    }
-    .manage-table td:nth-child(3) {
-        border-top-right-radius: 4px;
-        border-bottom-right-radius: 4px;
-        text-align: right; /* Keep actions aligned right */
+    .manage-table td:last-child {
+        text-align: right;
     }
 
-    /* Ensure a slight change on hover for user feedback */
     .manage-table tr:hover td {
-        background-color: #444; /* Slightly lighter dark gray on hover */
+        background-color: #444;
     }
     
-    /* Action buttons style */
     .manage-table .btn-action {
         padding: 5px 10px;
-        margin-right: 0; 
         margin-left: 5px;
         border: none;
         border-radius: 4px;
@@ -110,27 +72,46 @@
         font-size: 0.9em;
     }
 
-    .manage-table .btn-edit {
-        background-color: #007bff; /* Blue */
-    }
-
-    .manage-table .btn-delete {
-        background-color: #dc3545; /* Red */
-    }
+    .manage-table .btn-edit { background-color: #007bff; }
+    .manage-table .btn-delete { background-color: #dc3545; }
     
-    /* --- MODAL STYLES (Rest of existing styles) --- */
+    /* MODAL STYLES */
     .modal {
-        /* ... (Existing modal styles) ... */
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
     }
     .modal-content {
-        /* ... (Existing modal content styles) ... */
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 400px;
+        border-radius: 8px;
+        color: #333;
     }
     .close-button {
-        /* ... (Existing close button styles) ... */
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
     }
-    .close-button:hover,
-    .close-button:focus {
-        /* ... (Existing close button hover styles) ... */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
+    .submit-btn {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
     }
 </style>
 
@@ -157,8 +138,7 @@
                     <button class="btn-action btn-edit modal-trigger"
                             data-id="{{ college._id }}"
                             data-name="{{ college.college_name }}"
-                            data-coordinate="{{ college.coordinate }}"
-                            style="cursor: pointer;">
+                            data-coordinate="{{ college.coordinate }}">
                         Edit
                     </button>
                     <a href="{{ url_for('admin.delete_college', college_id=college._id) }}" 
@@ -170,7 +150,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" style="text-align: center; background-color: #111; color: white; border: none; padding: 10px;">No colleges have been added yet.</td>
+                <td colspan="3" style="text-align: center; background-color: #111;">No colleges have been added yet.</td>
             </tr>
             {% endfor %}
             </tbody>
@@ -180,86 +160,55 @@
 <div id="editModal" class="modal">
     <div class="modal-content">
         <span class="close-button">&times;</span>
-        <header class="generator-header" style="margin-bottom: 20px;">
-            <h1 id="modal-title">Edit College Data</h1> </header>
-        <form id="editForm" class="generator-form" method="POST" action="{{ url_for('admin.add_new_college') }}">
-            <div class="form-group" style="margin-bottom: 15px;">
+        <h2 id="modal-title" style="margin-bottom: 20px;">Edit College Data</h2>
+        <form id="editForm" method="POST">
+            <div class="form-group">
                 <label for="edit-college-name">College Name</label>
-                <input type="text" id="edit-college-name" name="college_name" required>
+                <input type="text" id="edit-college-name" name="college_name" 
+                       pattern="^[A-Za-z\s]+$" 
+                       title="Please enter alphabets only." required>
             </div>
             <div class="form-group">
                 <label for="edit-coordinate">Coordinates</label>
-                <input type="text" id="edit-coordinate" name="coordinate" required>
+                <input type="text" id="edit-coordinate" name="coordinate" 
+                       pattern="^-?\d+(\.\d+)?,-?\d+(\.\d+)?$" 
+                       title="Format must be 'float,float' (e.g., 11.8352,12.4352) with no letters." required>
             </div>
             <div class="form-actions" style="margin-top: 20px;">
-                <button type="submit" class="submit-btn">Save</button>
+                <button type="submit" class="submit-btn">Save College</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    // Get the modal and its elements
     const modal = document.getElementById('editModal');
     const modalTitle = document.getElementById('modal-title');
     const closeBtn = document.querySelector('.close-button');
     const editForm = document.getElementById('editForm');
     const editCollegeName = document.getElementById('edit-college-name');
     const editCoordinate = document.getElementById('edit-coordinate');
-    
-    // Select all buttons that open the modal (both 'Add New' and 'Edit' buttons in the table)
     const modalTriggers = document.querySelectorAll('.modal-trigger');
-    const addNewBtn = document.getElementById('addNewBtn');
 
-    // Attach listener to all modal triggers
     modalTriggers.forEach(button => {
-        button.addEventListener('click', function(event) {
-            event.preventDefault(); // Stop default action
-            
-            // --- LOGIC FOR ADD NEW COLLEGE ---
+        button.addEventListener('click', function() {
             if (this.id === 'addNewBtn') {
                 modalTitle.textContent = 'Add New College';
-                // Reset form action to the default 'add' route
                 editForm.action = "{{ url_for('admin.add_new_college') }}"; 
-                editCollegeName.value = ''; // Clear fields for new entry
+                editCollegeName.value = '';
                 editCoordinate.value = '';
-            } 
-            // --- LOGIC FOR EDIT COLLEGE --
-            else {
+            } else {
                 modalTitle.textContent = 'Edit College Data';
-                
-                // Get data from the button's data-* attributes
                 const collegeId = this.dataset.id;
-                const collegeName = this.dataset.name;
-                const coordinate = this.dataset.coordinate;
-
-                // Set the form's action to the correct URL for update
                 editForm.action = "{{ url_for('admin.edit_college', college_id='PLACEHOLDER') }}".replace('PLACEHOLDER', collegeId);
-                
-                // Populate the form fields with the data
-                editCollegeName.value = collegeName;
-                editCoordinate.value = coordinate;
+                editCollegeName.value = this.dataset.name;
+                editCoordinate.value = this.dataset.coordinate;
             }
-
-            // Ensure method is POST for both Add and Edit
-            editForm.method = 'POST'; 
-            
-            // Show the modal
             modal.style.display = 'block';
         });
     });
 
-    // When the user clicks on <span> (x), close the modal
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
-    }
-
-    // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
+    closeBtn.onclick = () => modal.style.display = 'none';
+    window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; }
 </script>
-
 {% endblock %}

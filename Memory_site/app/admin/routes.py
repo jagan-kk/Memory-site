@@ -27,97 +27,77 @@ admin_bp = Blueprint('admin', __name__,
                     static_folder='../static')
 
 
+def validate_college_data(name, coord):
+    # Regex: Only alphabets and spaces
+    if not re.match(r"^[A-Za-z\s]+$", name):
+        return False, "Invalid Name: Use alphabets only."
+    
+    # Regex: float,float (e.g. 11.11,22.22)
+    if not re.match(r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?$", coord):
+        return False, "Invalid Coordinates: Use 'float,float' format (e.g. 11.83,12.43)."
+    
+    return True, ""
+
 @admin_bp.route('/add-new')
 @login_required
 def add_new():
     try:
-        # Fetch all documents from the 'colleges' collection
-        colleges_cursor = mongo.db.colleges.find({})
-
-        # Convert the cursor to a list to pass to the template
-        colleges_list = list(colleges_cursor)
-
+        colleges_list = list(mongo.db.colleges.find({}))
     except Exception as e:
-        flash("Could not connect to the database to fetch college list.")
-        print(f"Error fetching college list: {e}")
+        flash("Could not fetch college list.")
         colleges_list = []
-
     return render_template('admin/add_new.html', colleges=colleges_list)
 
 @admin_bp.route('/add', methods=['POST'])
 @login_required
 def add_new_college():
-    try:
-        # Get data from the submitted form
-        college_name = request.form.get('college_name')
-        coordinate = request.form.get('coordinate')
+    name = request.form.get('college_name', '').strip()
+    coord = request.form.get('coordinate', '').strip()
 
-        if not college_name or not coordinate:
-            flash('Both college name and coordinate are required!', 'error')
-            return redirect(url_for('admin.add_new'))
-        
-        # Insert the new document into the 'colleges' collection
-        result = mongo.db.colleges.insert_one({
-            'college_name': college_name,
-            'coordinate': coordinate
-        })
-
-        if result.inserted_id:
-            flash(f'New college "{college_name}" added successfully!', 'success')
-        else:
-            flash('Failed to add new college.', 'error')
-
-    except Exception as e:
-        flash(f'An error occurred while adding the college: {e}', 'error')
-        print(f"Error adding new college: {e}")
-
-    # Redirect back to the college management page
-    return redirect(url_for('admin.add_new'))
-
-@admin_bp.route('/edit/<college_id>', methods=['GET', 'POST'])
-@login_required
-def edit_college(college_id):
-    college_oid = ObjectId(college_id)
-
-    if request.method == 'POST':
-        # This block runs when the user submits the form to update a college
-        new_name = request.form.get('college_name')
-        new_coordinate = request.form.get('coordinate')
-
-        # Update the document in the database
-        mongo.db.colleges.update_one(
-            {'_id': college_oid},
-            {'$set': {
-                'college_name': new_name,
-                'coordinate': new_coordinate
-            }}
-        )
-        flash('College updated successfully!', 'success')
+    is_valid, error_msg = validate_college_data(name, coord)
+    if not is_valid:
+        flash(error_msg, 'error')
         return redirect(url_for('admin.add_new'))
 
-    # This block runs when the user first clicks the "Edit" button (a GET request)
-    # Find the specific college to pre-populate the form
-    college = mongo.db.colleges.find_one_or_404({'_id': college_oid})
-    return render_template('admin/edit_college.html', college=college)
+    try:
+        mongo.db.colleges.insert_one({'college_name': name, 'coordinate': coord})
+        flash(f'College "{name}" added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {e}', 'error')
+    
+    return redirect(url_for('admin.add_new'))
 
+@admin_bp.route('/edit/<college_id>', methods=['POST'])
+@login_required
+def edit_college(college_id):
+    name = request.form.get('college_name', '').strip()
+    coord = request.form.get('coordinate', '').strip()
+
+    is_valid, error_msg = validate_college_data(name, coord)
+    if not is_valid:
+        flash(error_msg, 'error')
+        return redirect(url_for('admin.add_new'))
+
+    try:
+        mongo.db.colleges.update_one(
+            {'_id': ObjectId(college_id)},
+            {'$set': {'college_name': name, 'coordinate': coord}}
+        )
+        flash('College updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Update failed: {e}', 'error')
+        
+    return redirect(url_for('admin.add_new'))
 
 @admin_bp.route('/delete/<college_id>')
 @login_required
 def delete_college(college_id):
     try:
-        # Find the document by its ID and delete it
-        result = mongo.db.colleges.delete_one({'_id': ObjectId(college_id)})
-        if result.deleted_count == 1:
-            flash('College deleted successfully!', 'success')
-        else:
-            flash('College not found.', 'error')
+        mongo.db.colleges.delete_one({'_id': ObjectId(college_id)})
+        flash('College deleted successfully!', 'success')
     except Exception as e:
-        flash(f'An error occurred: {e}', 'error')
-        print(f"Error deleting college: {e}")
-
-    # Redirect back to the list of colleges
+        flash(f'Delete failed: {e}', 'error')
     return redirect(url_for('admin.add_new'))
-
 
 @admin_bp.route('/generator')
 @login_required
