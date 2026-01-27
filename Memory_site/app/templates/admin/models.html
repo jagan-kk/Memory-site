@@ -7,11 +7,18 @@
     <div class="header-section">
         <h2 class="page-title">3D Models</h2>
         
-        <div class="college-selector">
-            <select id="collegeSelect" onchange="filterModels()">
+        <div class="selector-group">
+            <select id="collegeSelect" onchange="filterContent()">
                 <option value="" selected disabled>Select College...</option>
                 {% for college in colleges %}
                 <option value="{{ college }}">{{ college }}</option>
+                {% endfor %}
+            </select>
+
+            <select id="branchSelect" onchange="filterContent()">
+                <option value="All">All Branches</option>
+                {% for branch in branches %}
+                <option value="{{ branch }}">{{ branch }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -30,30 +37,22 @@
             {% for i in range(1, 9) %}
             {% set sem_key = i|string %}
             <div id="Sem{{ i }}" class="tab-content" style="display: {{ 'block' if i == 1 else 'none' }};">
-                
                 <div class="model-grid">
                     {% for asset in models_by_sem[sem_key] %}
-                    <div class="model-card" data-college="{{ asset.college_name }}">
-                        <div class="model-icon">
-                            <span>📦</span>
-                        </div>
-
+                    <div class="model-card" data-college="{{ asset.college_name }}" data-branch="{{ asset.branch }}">
+                        <div class="model-icon">3D</div>
                         <div class="model-info">
                             <h3 title="{{ asset.filename }}">{{ asset.filename }}</h3>
-                            
                             {% if asset.glb_id %}
-                            <button onclick="showModelPopup('{{ asset.glb_id }}', '{{ asset.filename }}')" class="btn-view-3d">
-                                View 3D Model
-                            </button>
+                            <button onclick="showModelPopup('{{ asset.glb_id }}', '{{ asset.filename }}')" class="btn-open">View</button>
                             {% else %}
-                            <span class="error-text">Model ID Missing</span>
+                            <span class="error-text">ID Missing</span>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                
-                <p class="empty-msg" style="display:none;">No models found for S{{ i }}</p>
+                <p class="empty-msg" style="display:none;">No models found for this selection.</p>
             </div>
             {% endfor %}
         </div>
@@ -68,170 +67,95 @@
     <div class="modal-content">
         <span class="close-btn" onclick="closeModelPopup(event)">&times;</span>
         <h3 id="modalTitle">Model View</h3>
-        
-        <model-viewer 
-            id="popupViewer"
-            src="" 
-            alt="3D Model"
-            auto-rotate
-            camera-controls
-            shadow-intensity="1"
-            style="width: 100%; height: 400px; background-color: #f0f0f0; border-radius: 8px;">
-        </model-viewer>
-
-        <div style="margin-top: 15px; text-align: right;">
-            <a id="driveLink" href="#" target="_blank" class="drive-link">Download from Drive</a>
-        </div>
+        <model-viewer id="popupViewer" src="" alt="3D Model" auto-rotate camera-controls shadow-intensity="1" style="width: 100%; height: 400px; background-color: #f0f0f0; border-radius: 8px;"></model-viewer>
     </div>
 </div>
 
 <style>
-    /* ... (Keep your existing layout styles for header/tabs) ... */
-    .header-section { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .college-selector select { padding: 8px 12px; font-size: 16px; border-radius: 5px; border: 2px solid #007bff; min-width: 250px; }
+    /* CSS matched to Materials.html */
+    .header-section { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+    .selector-group { display: flex; gap: 10px; }
+    .selector-group select { padding: 8px 12px; font-size: 14px; border-radius: 5px; border: 2px solid #007bff; min-width: 180px; }
+    
     .tabs-header { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; overflow-x: auto; }
-    .tab-btn { flex: 1; padding: 15px; border: none; background: none; font-size: 1.1em; cursor: pointer; color: #555; font-weight: bold; min-width: 50px; }
-    .tab-btn:hover { background: #f9f9f9; color: #333; }
+    .tab-btn { flex: 1; padding: 15px; border: none; background: none; font-size: 1.1em; cursor: pointer; color: #555; font-weight: bold; border-bottom: 3px solid transparent; min-width: 50px; }
     .tab-btn.active { border-bottom: 3px solid #007bff; color: #007bff; }
-    .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-    .empty-state { text-align: center; padding: 50px; color: #888; background: #f9f9f9; border-radius: 8px; }
-
-    /* CARD STYLES */
-    .model-card { 
-        background: white; border: 1px solid #eee; border-radius: 8px; overflow: hidden;
-        text-align: center; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
+    
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+    
+    /* Card design matched to Materials */
+    .model-card { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; text-align: center; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .model-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-
-    .model-icon {
-        height: 120px; background: #e3f2fd; color: #1976d2;
-        display: flex; align-items: center; justify-content: center; font-size: 3em;
-    }
+    
+    /* Blue version of the PDF icon */
+    .model-icon { background: #e3f2fd; color: #1976d2; padding: 30px; font-size: 24px; font-weight: bold; }
+    
     .model-info { padding: 15px; }
-    .model-info h3 { margin: 0 0 10px; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .model-info h3 { font-size: 0.9em; margin: 0 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    /* Button design matched to Materials */
+    .btn-open { display: block; width: 100%; padding: 8px; background: #333; color: #fff; text-decoration: none; border-radius: 4px; font-size: 0.9em; border: none; cursor: pointer; }
+    
+    .empty-state { text-align: center; padding: 50px; color: #888; background: #f9f9f9; border-radius: 8px; }
+    .empty-msg { text-align: center; color: #999; margin-top: 20px; width: 100%; grid-column: 1 / -1; }
 
-    .btn-view-3d {
-        background: #007bff; color: white; border: none; padding: 8px 15px;
-        border-radius: 4px; cursor: pointer; width: 100%; font-size: 0.9em;
-    }
-    .btn-view-3d:hover { background: #0056b3; }
-
-    /* MODAL STYLES */
-    .modal-overlay {
-        display: none; /* Hidden by default */
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0,0,0,0.7); z-index: 1000;
-        align-items: center; justify-content: center;
-    }
-    .modal-content {
-        background: white; width: 90%; max-width: 800px;
-        padding: 20px; border-radius: 10px; position: relative;
-        animation: slideDown 0.3s ease-out;
-    }
-    @keyframes slideDown {
-        from { transform: translateY(-50px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    .close-btn {
-        position: absolute; top: 10px; right: 20px; font-size: 28px;
-        font-weight: bold; color: #aaa; cursor: pointer;
-    }
-    .close-btn:hover { color: #000; }
-    .drive-link { color: #007bff; text-decoration: none; font-size: 0.9em; }
-    .drive-link:hover { text-decoration: underline; }
-
-    .empty-msg { 
-    text-align: center; 
-    color: #999; 
-    margin-top: 20px; 
-    width: 100%; 
-    grid-column: 1 / -1; /* This makes it span across all columns */
-}
-
+    /* Modal Styling */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: white; width: 90%; max-width: 700px; padding: 20px; border-radius: 10px; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 20px; font-size: 30px; cursor: pointer; }
 </style>
 
 <script>
-    // --- MODAL LOGIC ---
-    function showModelPopup(glbId, filename) {
-        var modal = document.getElementById("modelModal");
-        var viewer = document.getElementById("popupViewer");
-        var title = document.getElementById("modalTitle");
-        var link = document.getElementById("driveLink");
-
-        // --- THE FIX ---
-        // OLD: var modelUrl = "https://drive.google.com/uc?export=download&id=" + glbId;
-        
-        // NEW: Point to our Python route
-        // We use the Flask url_for pattern concept, but hardcoded for JS:
-        var modelUrl = "/admin/serve_model/" + glbId; 
-        // ----------------
-
-        // 2. Set content
-        viewer.src = modelUrl;
-        title.innerText = filename;
-        
-        // Keep the download link pointing to Drive so they can still download if they want
-        link.href = "https://drive.google.com/uc?export=download&id=" + glbId;
-
-        // 3. Show modal
-        modal.style.display = "flex";
-    }
-
-    function closeModelPopup(event) {
-        // Close if clicking 'X' or the dark background (overlay)
-        if (event.target.id === "modelModal" || event.target.className === "close-btn") {
-            var modal = document.getElementById("modelModal");
-            var viewer = document.getElementById("popupViewer");
-            
-            modal.style.display = "none";
-            // Important: Clear src to stop playing/downloading in background
-            viewer.src = ""; 
-        }
-    }
-
-    // --- FILTER LOGIC (Same as before) ---
-    function filterModels() {
-        var select = document.getElementById("collegeSelect");
-        var selectedCollege = select.value;
-        if (!selectedCollege) return;
+    function filterContent() {
+        const college = document.getElementById("collegeSelect").value;
+        const branch = document.getElementById("branchSelect").value;
+        if (!college) return;
 
         document.getElementById("placeholder").style.display = "none";
         document.getElementById("mainContent").style.display = "block";
 
-        var allCards = document.querySelectorAll(".model-card");
-        allCards.forEach(function(card) {
-            if (card.getAttribute("data-college") === selectedCollege) {
-                card.style.display = "block";
-            } else {
-                card.style.display = "none";
-            }
+        document.querySelectorAll(".model-card").forEach(card => {
+            const matchesCollege = card.dataset.college === college;
+            const matchesBranch = (branch === "All" || card.dataset.branch === branch);
+            card.style.display = (matchesCollege && matchesBranch) ? "block" : "none";
         });
         updateEmptyMessages();
     }
 
     function updateEmptyMessages() {
-        document.querySelectorAll(".tab-content").forEach(function(tab) {
-            var visibleCount = 0;
+        document.querySelectorAll(".tab-content").forEach(tab => {
+            let visibleCount = 0;
             tab.querySelectorAll(".model-card").forEach(c => {
                 if (c.style.display !== "none") visibleCount++;
             });
-            var msg = tab.querySelector(".empty-msg");
+            const msg = tab.querySelector(".empty-msg");
             if (msg) msg.style.display = (visibleCount === 0) ? "block" : "none";
         });
     }
 
     function openSemester(evt, semesterId) {
-        var i, tabcontent, tablinks;
+        let i, tabcontent, tablinks;
         tabcontent = document.getElementsByClassName("tab-content");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
+        for (i = 0; i < tabcontent.length; i++) tabcontent[i].style.display = "none";
         tablinks = document.getElementsByClassName("tab-btn");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
+        for (i = 0; i < tablinks.length; i++) tablinks[i].className = tablinks[i].className.replace(" active", "");
         document.getElementById(semesterId).style.display = "block";
         evt.currentTarget.className += " active";
+    }
+
+    function showModelPopup(glbId, filename) {
+        const modal = document.getElementById("modelModal");
+        const viewer = document.getElementById("popupViewer");
+        document.getElementById("modalTitle").innerText = filename;
+        viewer.src = `/admin/serve_model/${glbId}`;
+        modal.style.display = "flex";
+    }
+
+    function closeModelPopup(event) {
+        if (event.target.id === "modelModal" || event.target.className === "close-btn") {
+            document.getElementById("modelModal").style.display = "none";
+            document.getElementById("popupViewer").src = ""; 
+        }
     }
 </script>
 {% endblock %}

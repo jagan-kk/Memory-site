@@ -129,52 +129,45 @@ def materials():
         # 1. Fetch Colleges
         colleges = list(mongo.db.colleges.find({}, {'college_name': 1, 'coordinate': 1}))
         
-        # Helper: Clean coordinates for matching (removes spaces)
         def clean_coord(c): return str(c).replace(" ", "").strip().lower() if c else ""
 
-        # Map Coordinates -> College Name
         coord_to_college = {}
         for c in colleges:
             if c.get('coordinate'):
                 coord_to_college[clean_coord(c.get('coordinate'))] = c.get('college_name')
         
-        # Get unique college names for the dropdown
         college_names = sorted(list(set(c['college_name'] for c in colleges if 'college_name' in c)))
 
         # 2. Fetch Assets
-        assets = mongo.db.assets.find({}, {
+        assets_cursor = mongo.db.assets.find({}, {
             'filename': 1, 
             'pdf_url': 1,
             'semester': 1, 
-            'coordinate': 1
+            'coordinate': 1,
+            'branch': 1
         })
+        assets = list(assets_cursor)
+
+        # Extract unique branches for the dropdown
+        branch_names = sorted(list(set(str(a.get('branch', '')).strip() for a in assets if a.get('branch'))))
 
         # 3. Group by Semester
         materials_by_sem = {str(i): [] for i in range(1, 9)}
         materials_by_sem['Other'] = []
 
         for asset in assets:
-            # A. Match College
             raw_coord = asset.get('coordinate')
-            cleaned_coord = clean_coord(raw_coord)
-            asset['college_name'] = coord_to_college.get(cleaned_coord, 'Unknown')
+            asset['college_name'] = coord_to_college.get(clean_coord(raw_coord), 'Unknown')
 
-            # B. Smart Semester Parsing (The Fix for "s8")
             raw_sem = str(asset.get('semester', ''))
-            
-            # This regex looks for ANY number inside the text.
-            # It turns "s8" -> 8, "Sem 4" -> 4, "Semester 1" -> 1
             match = re.search(r'(\d+)', raw_sem)
             
             target_bucket = 'Other'
-            
             if match:
                 sem_num = int(match.group(1))
-                # Check if the number is valid (1-8)
                 if 1 <= sem_num <= 8:
                     target_bucket = str(sem_num)
             
-            # Add to the correct bucket
             materials_by_sem[target_bucket].append(asset)
 
     except Exception as e:
@@ -182,10 +175,12 @@ def materials():
         materials_by_sem = {str(i): [] for i in range(1, 9)}
         materials_by_sem['Other'] = []
         college_names = []
+        branch_names = []
         
     return render_template('admin/materials.html', 
                            materials_by_sem=materials_by_sem, 
-                           colleges=college_names)
+                           colleges=college_names,
+                           branches=branch_names)
 
 
 @admin_bp.route('/models')
@@ -195,10 +190,8 @@ def models():
         # 1. Fetch Colleges
         colleges = list(mongo.db.colleges.find({}, {'college_name': 1, 'coordinate': 1}))
         
-        # Helper: Clean coordinates
         def clean_coord(c): return str(c).replace(" ", "").strip().lower() if c else ""
 
-        # Map Coordinates -> College Name
         coord_to_college = {}
         for c in colleges:
             if c.get('coordinate'):
@@ -206,25 +199,28 @@ def models():
         
         college_names = sorted(list(set(c['college_name'] for c in colleges if 'college_name' in c)))
 
-        # 2. Fetch Assets (Specifically GLB fields)
-        assets = mongo.db.assets.find({}, {
+        # 2. Fetch Assets
+        assets_cursor = mongo.db.assets.find({}, {
             'filename': 1, 
             'glb_url': 1,
-            'glb_id': 1,    # Important for <model-viewer>
+            'glb_id': 1,
             'semester': 1, 
-            'coordinate': 1
+            'coordinate': 1,
+            'branch': 1
         })
+        assets = list(assets_cursor)
+
+        # Extract unique branches for the dropdown
+        branch_names = sorted(list(set(str(a.get('branch', '')).strip() for a in assets if a.get('branch'))))
 
         # 3. Group by Semester
         models_by_sem = {str(i): [] for i in range(1, 9)}
         models_by_sem['Other'] = []
 
         for asset in assets:
-            # A. Match College
             raw_coord = asset.get('coordinate')
             asset['college_name'] = coord_to_college.get(clean_coord(raw_coord), 'Unknown')
 
-            # B. Smart Semester Parsing
             raw_sem = str(asset.get('semester', ''))
             match = re.search(r'(\d+)', raw_sem)
             
@@ -241,10 +237,12 @@ def models():
         models_by_sem = {str(i): [] for i in range(1, 9)}
         models_by_sem['Other'] = []
         college_names = []
+        branch_names = []
         
     return render_template('admin/models.html', 
                            models_by_sem=models_by_sem, 
-                           colleges=college_names)
+                           colleges=college_names,
+                           branches=branch_names)
 
 @admin_bp.route('/upload', methods=['POST'])
 @login_required
@@ -267,6 +265,7 @@ def upload_file():
     # --- GET FORM DATA ---
     coordinate = request.form.get("coordinate")
     semester = request.form.get("semester") # <--- NEW: Retrieve semester
+    branch = request.form.get("branch")
     # Note: college_name and branch are available but not currently saved to assets collection
 
     if not coordinate:
@@ -348,7 +347,8 @@ def upload_file():
                     "pdf_id": pdf_drive_id,   
                     "glb_id": glb_drive_id,   
                     "coordinate": coordinate,
-                    "semester": semester # <--- NEW: Save semester
+                    "semester": semester, # <--- NEW: Save semester
+                    "branch": branch
                 })
                 print("[7] MongoDB asset saved.")
 
