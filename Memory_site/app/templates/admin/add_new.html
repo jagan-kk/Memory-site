@@ -8,6 +8,31 @@
         --dark-background: #333; 
         --primary-color: #3f51b5; 
         --accent-green: #28a745; 
+        --error-red: #dc3545;
+        --error-bg: #f8d7da;
+        --error-text: #721c24;
+        --success-bg: #d4edda;
+        --success-text: #155724;
+    }
+
+    /* Flash Alert Styles */
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        font-weight: 500;
+        transition: opacity 0.5s ease; /* Smooth fade out */
+    }
+    .alert-error {
+        background-color: var(--error-bg);
+        color: var(--error-text);
+        border-color: #f5c6cb;
+    }
+    .alert-success {
+        background-color: var(--success-bg);
+        color: var(--success-text);
+        border-color: #c3e6cb;
     }
 
     .btn-add-new {
@@ -22,9 +47,7 @@
         border: none;
         cursor: pointer;
     }
-    .btn-add-new:hover {
-        background-color: #218838;
-    }
+    .btn-add-new:hover { background-color: #218838; }
 
     .manage-table {
         width: 100%;
@@ -36,30 +59,20 @@
     .manage-table th {
         background-color: var(--dark-background);
         color: white;
-        font-weight: 700;
         padding: 12px 15px;
         text-align: left;
-        border: 1px solid var(--dark-background);
         border-radius: 4px; 
     }
 
     .manage-table td {
         padding: 12px 15px;
-        line-height: 1.5;
-        vertical-align: middle;
         background-color: var(--dark-background); 
         color: white; 
         border: 1px solid var(--dark-background);
         border-radius: 4px;
     }
 
-    .manage-table td:last-child {
-        text-align: right;
-    }
-
-    .manage-table tr:hover td {
-        background-color: #444;
-    }
+    .manage-table tr:hover td { background-color: #444; }
     
     .manage-table .btn-action {
         padding: 5px 10px;
@@ -67,9 +80,7 @@
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        text-decoration: none;
         color: white;
-        font-size: 0.9em;
     }
 
     .manage-table .btn-edit { background-color: #007bff; }
@@ -90,17 +101,11 @@
         background-color: #fefefe;
         margin: 10% auto;
         padding: 20px;
-        border: 1px solid #888;
         width: 400px;
         border-radius: 8px;
         color: #333;
     }
-    .close-button {
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
+    .close-button { float: right; font-size: 28px; cursor: pointer; }
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
     .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
@@ -116,6 +121,19 @@
 </style>
 
 <div class="generator-container manage-container">
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div id="flash-wrapper">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} flash-message">
+                {{ message }}
+              </div>
+            {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <div class="manage-header">
         <h1>Manage College Data</h1>
         <button id="addNewBtn" class="btn-add-new modal-trigger">Add New College</button>
@@ -143,14 +161,14 @@
                     </button>
                     <a href="{{ url_for('admin.delete_college', college_id=college._id) }}" 
                        class="btn-action btn-delete" 
-                       onclick="return confirm('Are you sure you want to delete {{ college.college_name }}?');">
+                       onclick="return confirm('Are you sure?');">
                         Delete
                     </a>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" style="text-align: center; background-color: #111;">No colleges have been added yet.</td>
+                <td colspan="3" style="text-align: center; background-color: #111;">No colleges added yet.</td>
             </tr>
             {% endfor %}
             </tbody>
@@ -160,28 +178,25 @@
 <div id="editModal" class="modal">
     <div class="modal-content">
         <span class="close-button">&times;</span>
-        <h2 id="modal-title" style="margin-bottom: 20px;">Edit College Data</h2>
+        <h2 id="modal-title">Edit College Data</h2>
         <form id="editForm" method="POST">
             <div class="form-group">
                 <label for="edit-college-name">College Name</label>
                 <input type="text" id="edit-college-name" name="college_name" 
-                       pattern="^[A-Za-z\s]+$" 
-                       title="Please enter alphabets only." required>
+                       pattern=".*\S.*" title="Cannot be empty or only spaces." required>
             </div>
             <div class="form-group">
                 <label for="edit-coordinate">Coordinates</label>
                 <input type="text" id="edit-coordinate" name="coordinate" 
-                       pattern="^-?\d+(\.\d+)?,-?\d+(\.\d+)?$" 
-                       title="Format must be 'float,float' (e.g., 11.8352,12.4352) with no letters." required>
+                       pattern="^-?\d+(\.\d+)?,-?\d+(\.\d+)?$" required>
             </div>
-            <div class="form-actions" style="margin-top: 20px;">
-                <button type="submit" class="submit-btn">Save College</button>
-            </div>
+            <button type="submit" class="submit-btn">Save College</button>
         </form>
     </div>
 </div>
 
 <script>
+    // --- 1. MODAL LOGIC ---
     const modal = document.getElementById('editModal');
     const modalTitle = document.getElementById('modal-title');
     const closeBtn = document.querySelector('.close-button');
@@ -210,5 +225,18 @@
 
     closeBtn.onclick = () => modal.style.display = 'none';
     window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; }
+
+    // --- 2. AUTO-DISMISS FLASH MESSAGES (5 SECONDS) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const messages = document.querySelectorAll('.flash-message');
+        messages.forEach(msg => {
+            setTimeout(() => {
+                msg.style.opacity = '0'; // Start fade out
+                setTimeout(() => {
+                    msg.remove(); // Physically remove from DOM
+                }, 500); // Wait for fade transition to finish
+            }, 5000); // 5000ms = 5 seconds
+        });
+    });
 </script>
 {% endblock %}

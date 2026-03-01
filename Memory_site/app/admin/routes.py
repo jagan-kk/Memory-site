@@ -10,7 +10,7 @@ from app.services.ai_summarizer import summarize_text_with_bart
 from app.services.model_generator import create_text_texture, generate_3d_card
 # Import the Google Drive service
 from app.services.google_drive import upload_to_drive
-
+from pptx import Presentation
 
 from flask import send_file
 # Ensure you import the new function
@@ -28,6 +28,10 @@ admin_bp = Blueprint('admin', __name__,
 
 
 def validate_college_data(name, coord):
+    # Check if fields are empty
+    if not name or not coord:
+        return False, "Error: Both College Name and Coordinates are required."
+
     # Regex: Only alphabets and spaces
     if not re.match(r"^[A-Za-z\s]+$", name):
         return False, "Invalid Name: Use alphabets only."
@@ -273,31 +277,43 @@ def upload_file():
         return redirect(url_for('admin.generator'))
 
     for file in uploaded_files:
-        if file and file.filename.lower().endswith('.pdf'):
+        if file and file.filename.lower().endswith(('.pdf', '.ppt', '.pptx')):
             try:
-                # --- SETUP DIRECTORIES & FILE NAMES ---
+                # --- SETUP DIRECTORIES ---
                 temp_dir = 'temp'
                 models_dir = os.path.join('app', 'static', 'models')
-
                 os.makedirs(temp_dir, exist_ok=True)
                 os.makedirs(models_dir, exist_ok=True)
 
                 file_basename = os.path.splitext(file.filename)[0]
                 glb_filename = f"{file_basename}.glb"
-                
-                temp_pdf_path = os.path.join(temp_dir, file.filename)
+
+                # Using generic name 'temp_file_path' instead of 'temp_pdf_path'
+                temp_file_path = os.path.join(temp_dir, file.filename)
                 texture_path = os.path.join(temp_dir, 'summary_texture.png')
                 glb_save_path = os.path.join(models_dir, glb_filename)
 
-                # --- 1. SAVE PDF TEMPORARILY & EXTRACT TEXT ---
-                print(f"[1] Saving PDF locally: {file.filename}")
-                # Save the uploaded file locally before processing
-                file.save(temp_pdf_path) 
-                
-                print("[2] Extracting text from PDF...")
-                doc = fitz.open(temp_pdf_path)
-                full_text = "".join(page.get_text() for page in doc)
-                doc.close()
+                # --- 1. SAVE FILE TEMPORARILY ---
+                print(f"[1] Saving file locally: {file.filename}")
+                file.save(temp_file_path) 
+            
+                # --- 2. DYNAMIC TEXT EXTRACTION ---
+                full_text = ""
+                if file.filename.lower().endswith('.pdf'):
+                    print("[2] Extracting text from PDF...")
+                    doc = fitz.open(temp_file_path)
+                    full_text = "".join(page.get_text() for page in doc)
+                    doc.close()
+                else:
+                    print("[2] Extracting text from PowerPoint...")
+                    # Extract text from every shape in every slide
+                    prs = Presentation(temp_file_path)
+                    text_runs = []
+                    for slide in prs.slides:
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text"):
+                                text_runs.append(shape.text)
+                    full_text = "\n".join(text_runs)
 
                 if not full_text.strip():
                     flash("Could not extract any text from the PDF.")

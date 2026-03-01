@@ -1,6 +1,6 @@
 import re
 from transformers import BartForConditionalGeneration, BartTokenizer
-
+from pptx import Presentation
 # --- NEW: Load Model and Tokenizer Manually ---
 print("Loading BART Tokenizer and Model...")
 model_name = "facebook/bart-large-cnn"

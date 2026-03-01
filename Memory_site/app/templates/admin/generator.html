@@ -116,7 +116,7 @@
                 <label for="file-upload" class="cursor-pointer" style="display: block; cursor: pointer;">
                     <svg style="margin: 0 auto; height: 48px; width: 48px; color: #aaa;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4.903l-1 8.097z"></path></svg>
                     <p id="upload-message" style="margin-top: 5px; font-size: 0.9em; color: #555;">Drag and drop a PDF, or click to browse.</p>
-                    <p style="font-size: 0.75em; color: #777;">Only PDF files are accepted.</p>
+                    <p style="font-size: 0.75em; color: #777;">Only PDF and PPT files are accepted.</p>
                 </label>
                 
                 <input 
@@ -124,7 +124,7 @@
                     name="files" 
                     type="file" 
                     multiple 
-                    accept=".pdf" 
+                    accept=".pdf, .ppt, .pptx" 
                     required
                     class="file-upload-input"
                     onchange="document.getElementById('upload-message').innerText = this.files.length + ' file(s) selected: ' + Array.from(this.files).map(f => f.name).join(', ');"
