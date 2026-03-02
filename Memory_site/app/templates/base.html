@@ -22,7 +22,7 @@
             <nav class="sidebar-nav">
                 <ul>
                     <ul>
-    <li><a href="#">Home</a></li>
+    <li><a href="{{ url_for('admin.home') }}" class="{{ 'active' if 'home' in request.endpoint else '' }}">Home</a></li>
     <li><a href="{{ url_for('admin.add_new') }}" class="{{ 'active' if 'add_new' in request.endpoint else '' }}">Add New</a></li>
     <li><a href="{{ url_for('admin.generator') }}" class="{{ 'active' if 'generator' in request.endpoint else '' }}">Generator</a></li>
     

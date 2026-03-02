@@ -42,6 +42,11 @@ def validate_college_data(name, coord):
     
     return True, ""
 
+@admin_bp.route('/home')
+@login_required
+def home():
+    return render_template('admin/home.html')
+
 @admin_bp.route('/add-new')
 @login_required
 def add_new():

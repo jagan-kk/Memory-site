@@ -17,6 +17,7 @@
         </div>
       {% endif %}
     {% endwith %}
+
     <div class="control">
         <div class="block-cube block-input">
             <input name="username" placeholder="Username" type="text" required>
@@ -61,5 +62,19 @@
             Log In
         </div>
     </button>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="{{ url_for('auth.reset_request') }}" style="color: #888; text-decoration: none; font-size: 0.85em; transition: color 0.3s;">
+            Forgot Password?
+        </a>
+    </div>
 </form>
+
+<style>
+    /* Subtle hover effect for the link to match your UI */
+    form a:hover {
+        color: #fff !important;
+        text-shadow: 0 0 5px rgba(255,255,255,0.5);
+    }
+</style>
 {% endblock %}
