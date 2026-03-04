@@ -261,147 +261,89 @@ def upload_file():
 
     uploaded_files = request.files.getlist('files')
     if not uploaded_files or uploaded_files[0].filename == '':
-        flash('No files selected!')
+        flash('No files selected!', 'error')
         return redirect(url_for('admin.generator'))
 
-    print("\n--- STARTING NEW FILE UPLOAD PROCESS ---")
-
-    # Initialize file paths to None for robust cleanup in the 'finally' block
-    temp_pdf_path = None
-    texture_path = None
-    glb_save_path = None
-    
-    # --- GET FORM DATA ---
+    ALLOWED_EXTENSIONS = {'.pdf', '.ppt', '.pptx'}
     coordinate = request.form.get("coordinate")
-    semester = request.form.get("semester") # <--- NEW: Retrieve semester
+    semester = request.form.get("semester")
     branch = request.form.get("branch")
-    # Note: college_name and branch are available but not currently saved to assets collection
 
     if not coordinate:
         flash('Coordinate is required for asset upload!', 'error')
         return redirect(url_for('admin.generator'))
 
     for file in uploaded_files:
-        if file and file.filename.lower().endswith(('.pdf', '.ppt', '.pptx')):
-            try:
-                # --- SETUP DIRECTORIES ---
-                temp_dir = 'temp'
-                models_dir = os.path.join('app', 'static', 'models')
-                os.makedirs(temp_dir, exist_ok=True)
-                os.makedirs(models_dir, exist_ok=True)
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        # Server-side validation check
+        if file_ext not in ALLOWED_EXTENSIONS:
+            flash(f"Error: '{file.filename}' is not a supported format. Only PDF and PPT are allowed.", 'error')
+            return redirect(url_for('admin.generator'))
 
-                file_basename = os.path.splitext(file.filename)[0]
-                glb_filename = f"{file_basename}.glb"
+        try:
+            # Setup directories and paths
+            temp_dir = 'temp'
+            models_dir = os.path.join('app', 'static', 'models')
+            os.makedirs(temp_dir, exist_ok=True)
+            os.makedirs(models_dir, exist_ok=True)
 
-                # Using generic name 'temp_file_path' instead of 'temp_pdf_path'
-                temp_file_path = os.path.join(temp_dir, file.filename)
-                texture_path = os.path.join(temp_dir, 'summary_texture.png')
-                glb_save_path = os.path.join(models_dir, glb_filename)
+            file_basename = os.path.splitext(file.filename)[0]
+            glb_filename = f"{file_basename}.glb"
+            temp_file_path = os.path.join(temp_dir, file.filename)
+            texture_path = os.path.join(temp_dir, 'summary_texture.png')
+            glb_save_path = os.path.join(models_dir, glb_filename)
 
-                # --- 1. SAVE FILE TEMPORARILY ---
-                print(f"[1] Saving file locally: {file.filename}")
-                file.save(temp_file_path) 
+            file.save(temp_file_path) 
             
-                # --- 2. DYNAMIC TEXT EXTRACTION ---
-                full_text = ""
-                if file.filename.lower().endswith('.pdf'):
-                    print("[2] Extracting text from PDF...")
-                    doc = fitz.open(temp_file_path)
-                    full_text = "".join(page.get_text() for page in doc)
-                    doc.close()
-                else:
-                    print("[2] Extracting text from PowerPoint...")
-                    # Extract text from every shape in every slide
-                    prs = Presentation(temp_file_path)
-                    text_runs = []
-                    for slide in prs.slides:
-                        for shape in slide.shapes:
-                            if hasattr(shape, "text"):
-                                text_runs.append(shape.text)
-                    full_text = "\n".join(text_runs)
+            # Text Extraction
+            full_text = ""
+            if file_ext == '.pdf':
+                doc = fitz.open(temp_file_path)
+                full_text = "".join(page.get_text() for page in doc)
+                doc.close()
+            else:
+                prs = Presentation(temp_file_path)
+                text_runs = [shape.text for slide in prs.slides for shape in slide.shapes if hasattr(shape, "text")]
+                full_text = "\n".join(text_runs)
 
-                if not full_text.strip():
-                    flash("Could not extract any text from the PDF.")
-                    return redirect(url_for('admin.generator'))
+            if not full_text.strip():
+                flash(f"Could not extract text from {file.filename}.", 'error')
+                continue
 
-                # --- 2. AI SUMMARIZATION ---
-                print("[3] Generating summary...")
-                summary = summarize_text_with_bart(full_text)
-                session['summary'] = summary
-                
-                # --- 3. CREATE TEXTURE & GENERATE GLB MODEL ---
-                print("[4] Creating texture and GLB model...")
-                create_text_texture(summary, texture_path)
+            # Process AI summary and GLB
+            summary = summarize_text_with_bart(full_text)
+            session['summary'] = summary
+            create_text_texture(summary, texture_path)
+            generate_3d_card(texture_path, glb_save_path)
+            session['glb_path'] = f'models/{glb_filename}'
 
-                # Check if texture was created successfully before proceeding
-                if not os.path.exists(texture_path):
-                    raise FileNotFoundError("Texture file could not be created by model_generator.")
-                    
-                generate_3d_card(texture_path, glb_save_path)
-                session['glb_path'] = f'models/{glb_filename}'
+            # Drive Upload and DB Save
+            pdf_drive_url, pdf_drive_id = upload_to_drive(temp_file_path, file.filename, "application/pdf")
+            glb_drive_url, glb_drive_id = upload_to_drive(glb_save_path, glb_filename, "model/gltf-binary")
 
-                # --- 4. UPLOAD FILES TO GOOGLE DRIVE ---
-                print("\n[5] Uploading files to Google Drive...")
-                
-                # Upload PDF
-                pdf_drive_url, pdf_drive_id = upload_to_drive(
-                    temp_pdf_path, file.filename, "application/pdf"
-                )
-                
-                # Upload GLB (Must be saved to glb_save_path inside app/static/models)
-                glb_drive_url, glb_drive_id = upload_to_drive(
-                    glb_save_path, glb_filename, "model/gltf-binary"
-                )
+            mongo.db.assets.insert_one({
+                "filename": file.filename,
+                "pdf_url": pdf_drive_url, 
+                "glb_url": glb_drive_url, 
+                "pdf_id": pdf_drive_id,   
+                "glb_id": glb_drive_id,   
+                "coordinate": coordinate,
+                "semester": semester,
+                "branch": branch
+            })
 
-                if not pdf_drive_id or not glb_drive_id:
-                    # Continue execution but warn the user if upload failed
-                    flash("Warning: File uploads to Google Drive failed for one or both files. Check console logs for API errors.", 'warning')
-                else:
-                    print("Uploads successful.")
+            flash(f"'{file.filename}' processed successfully!", 'success')
 
-                # --- 5. SAVE INTO MONGODB ---
-                print("[6] Saving asset data to MongoDB...")
-                mongo.db.assets.insert_one({
-                    "filename": file.filename,
-                    "pdf_url": pdf_drive_url, 
-                    "glb_url": glb_drive_url, 
-                    "pdf_id": pdf_drive_id,   
-                    "glb_id": glb_drive_id,   
-                    "coordinate": coordinate,
-                    "semester": semester, # <--- NEW: Save semester
-                    "branch": branch
-                })
-                print("[7] MongoDB asset saved.")
+        except Exception as e:
+            flash(f"An error occurred with {file.filename}: {e}", 'error')
+        
+        finally:
+            if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+            if 'texture_path' in locals() and os.path.exists(texture_path):
+                os.remove(texture_path)
 
-                flash("PDF processed, GLB created, and both files uploaded to Google Drive successfully!")
-                return redirect(url_for('admin.generator'))
-
-            except Exception as e:
-                print(f"[FATAL EXCEPTION] An error occurred: {e}")
-                import traceback
-                traceback.print_exc()
-                flash(f"An error occurred: {e}", 'error')
-                return redirect(url_for('admin.generator'))
-            
-            finally:
-                # --- FINAL CLEANUP (Crucial for temporary files) ---
-                print("\n[8] Cleaning up temporary local files...")
-                # The 'finally' block ensures cleanup runs even if an exception occurs
-                
-                # 1. Remove temporary PDF
-                if temp_pdf_path and os.path.exists(temp_pdf_path):
-                    os.remove(temp_pdf_path)
-                    print(f"   -> Removed temporary PDF: {temp_pdf_path}")
-                
-                # 2. Remove temporary texture PNG
-                if texture_path and os.path.exists(texture_path):
-                    os.remove(texture_path)
-                    print(f"   -> Removed temporary texture: {texture_path}")
-
-                # Note: We intentionally keep the generated GLB file in app/static/models 
-                # because session['glb_path'] points to it for immediate viewing on the generator page.
-    
-    flash('No valid PDF files were found in your upload.')
     return redirect(url_for('admin.generator'))
 
 
