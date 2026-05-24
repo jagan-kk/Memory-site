@@ -1,1 +1,3 @@
 .venv/
+Memory_site/credentials.json
+Memory_site/token.json
