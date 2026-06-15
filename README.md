@@ -1,4 +1,4 @@
-# AI AR Augmentation
+# AI AR Augmentation/AI AR Memory Palace
 
 An innovative AI + Augmented Reality system that transforms uploaded PDF documents into interactive 3D AR cards. The project combines Artificial Intelligence, depth estimation, document understanding, and AR visualization to create immersive digital experiences.
 
