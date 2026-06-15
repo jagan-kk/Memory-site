@@ -7,10 +7,10 @@ class Config:
     # --- YOUR UPDATED MONGODB CONFIGURATION ---
     # This now uses the specific connection details for your Cluster0.
     MONGO_URI = os.environ.get('MONGO_URI') or \
-        'mongodb+srv://jagankk:Jagankkstm23@cluster0.kqm7txf.mongodb.net/arProjectDB?retryWrites=true&w=majority&appName=Cluster0'
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
+        ''
+    MAIL_SERVER = ''
+    MAIL_PORT = 
     MAIL_USE_TLS = True
-    MAIL_USERNAME = 'jagankk9605@gmail.com'
-    MAIL_PASSWORD = 'tpld jvoj sbjy axtv' # Use an App Password
-    MAIL_DEFAULT_SENDER = 'jagankk9605@gmail.com'
+    MAIL_USERNAME = ''
+    MAIL_PASSWORD = '' # Use an App Password
+    MAIL_DEFAULT_SENDER = ''
